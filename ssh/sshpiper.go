@@ -598,11 +598,29 @@ func (pipe *pipedConn) loop() error {
 	c := make(chan error)
 
 	go func() {
-		c <- piping(pipe.upstream.transport, pipe.downstream.transport, pipe.hookDownstreamMsg)
+		err := piping(pipe.upstream.transport, pipe.downstream.transport, pipe.hookDownstreamMsg)
+		if err != nil {
+			defer func() {
+				if r := recover(); r != nil {
+					return
+				}
+			}()
+			c <- err
+		}
+		defer close(c)
 	}()
 
 	go func() {
-		c <- piping(pipe.downstream.transport, pipe.upstream.transport, pipe.hookUpstreamMsg)
+		err := piping(pipe.downstream.transport, pipe.upstream.transport, pipe.hookUpstreamMsg)
+		if err != nil {
+			defer func() {
+				if r := recover(); r != nil {
+					return
+				}
+			}()
+			c <- err
+		}
+		defer close(c)
 	}()
 
 	defer pipe.Close()
